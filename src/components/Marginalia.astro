@@ -1,0 +1,68 @@
+---
+interface Props {
+  notes: string[];
+  side: 'left' | 'right';
+}
+
+const { notes, side } = Astro.props;
+
+// Generate placeholder notes if none provided
+const displayNotes = notes.length > 0 ? notes : [
+  'Revisit this',
+  'Try again later'
+];
+---
+
+<div class={`marginalia marginalia-${side}`}>
+  {displayNotes.map((note, index) => {
+    const rotation = (Math.random() * 6 - 3); // Random rotation between -3 and 3 degrees
+    const top = 20 + (index * 25) + (Math.random() * 10 - 5); // Slight vertical variation
+    return (
+      <div 
+        class="marginalia-note"
+        style={`transform: rotate(${rotation}deg); top: ${top}%;`}
+      >
+        {note}
+      </div>
+    );
+  })}
+</div>
+
+<style>
+  .marginalia {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 80px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .marginalia-left {
+    left: -90px;
+  }
+
+  .marginalia-right {
+    right: -90px;
+  }
+
+  .marginalia-note {
+    position: absolute;
+    font-family: 'Georgia', serif;
+    font-size: 0.7rem;
+    color: #6B5235;
+    opacity: 0.6;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    white-space: nowrap;
+    font-style: italic;
+    line-height: 1.2;
+  }
+
+  @media (max-width: 768px) {
+    .marginalia {
+      display: none;
+    }
+  }
+</style>
+

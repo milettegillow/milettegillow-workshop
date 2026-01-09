@@ -1,0 +1,171 @@
+---
+import { getCollection } from 'astro:content';
+
+const pages = await getCollection('pages');
+const weeks = await getCollection('weeks');
+
+// Helper to check if content renders successfully
+async function getContentPreview(entry: any) {
+  try {
+    const rendered = await entry.render();
+    // Check if Content exists
+    if (rendered.Content) {
+      // For MDX, we can't easily extract text without rendering
+      // So we'll just indicate it loaded successfully
+      return 'loaded OK (MDX content rendered successfully)';
+    }
+    return 'no content';
+  } catch (error) {
+    return `Error: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+const pagesWithPreview = await Promise.all(
+  pages.map(async (page) => ({
+    id: page.id,
+    slug: page.slug,
+    filepath: page.id, // Astro doesn't expose filepath directly, but id usually reflects it
+    preview: await getContentPreview(page),
+  }))
+);
+
+const weeksWithPreview = await Promise.all(
+  weeks.map(async (week) => ({
+    id: week.id,
+    slug: week.slug,
+    filepath: week.id,
+    weekNumber: week.data.weekNumber,
+    active: week.data.active,
+    preview: await getContentPreview(week),
+  }))
+);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Content Debug - MDX Files</title>
+    <style>
+      body {
+        font-family: monospace;
+        padding: 2rem;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        line-height: 1.6;
+      }
+      h1, h2 {
+        color: #4CAF50;
+      }
+      .section {
+        margin: 2rem 0;
+        padding: 1rem;
+        background: #2a2a2a;
+        border-left: 4px solid #4CAF50;
+      }
+      .entry {
+        margin: 1rem 0;
+        padding: 1rem;
+        background: #333;
+        border-radius: 4px;
+      }
+      .entry-id {
+        color: #64B5F6;
+        font-weight: bold;
+      }
+      .entry-slug {
+        color: #BA68C8;
+      }
+      .entry-preview {
+        color: #AAA;
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        background: #1a1a1a;
+        border-radius: 2px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .active-true {
+        color: #81C784;
+      }
+      .active-false {
+        color: #E57373;
+      }
+      .count {
+        color: #FFD54F;
+        font-size: 1.2em;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔍 Content Collections Debug</h1>
+    <p>This page shows all entries from the <code>pages</code> and <code>weeks</code> collections.</p>
+    
+    <div class="section">
+      <h2>Pages Collection <span class="count">({pages.length} entries)</span></h2>
+      {pagesWithPreview.length === 0 ? (
+        <p>❌ No pages found</p>
+      ) : (
+        pagesWithPreview.map((page) => (
+          <div class="entry">
+            <div>
+              <span class="entry-id">ID:</span> {page.id} | 
+              <span class="entry-slug"> Slug:</span> {page.slug || '(none)'} |
+              <span> Filepath:</span> <code>{page.filepath}</code>
+            </div>
+            <div class="entry-preview">
+              {page.preview}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+
+    <div class="section">
+      <h2>Weeks Collection <span class="count">({weeks.length} entries)</span></h2>
+      {weeksWithPreview.length === 0 ? (
+        <p>❌ No weeks found</p>
+      ) : (
+        weeksWithPreview
+          .sort((a, b) => a.weekNumber - b.weekNumber)
+          .map((week) => (
+            <div class="entry">
+              <div>
+                <span class="entry-id">ID:</span> {week.id} | 
+                <span class="entry-slug"> Slug:</span> {week.slug || '(none)'} |
+                <span> Week:</span> {week.weekNumber} |
+                <span class={week.active ? 'active-true' : 'active-false'}>
+                  Active: {String(week.active)}
+                </span> |
+                <span> Filepath:</span> <code>{week.filepath}</code>
+              </div>
+              <div class="entry-preview">
+                {week.preview}
+              </div>
+            </div>
+          ))
+      )}
+    </div>
+
+    <div class="section">
+      <h2>Key Checks</h2>
+      <ul>
+        <li>
+          {pagesWithPreview.find(p => p.id === 'tools' || p.slug === 'tools') 
+            ? '✅ tools page found' 
+            : '❌ tools page NOT found'}
+        </li>
+        <li>
+          {weeksWithPreview.find(w => w.id === 'week-01' || w.id.includes('week-01'))
+            ? '✅ week-01 found'
+            : '❌ week-01 NOT found'}
+        </li>
+        <li>
+          Active weeks: {weeksWithPreview.filter(w => w.active === true).length}
+        </li>
+      </ul>
+    </div>
+  </body>
+</html>

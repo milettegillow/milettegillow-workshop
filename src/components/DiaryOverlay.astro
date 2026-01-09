@@ -1,0 +1,211 @@
+---
+import BookDiary from './BookDiary.astro';
+---
+
+<div id="diary-overlay" class="diary-overlay fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="overlay-backdrop absolute inset-0 bg-black bg-opacity-75" id="diary-backdrop"></div>
+  
+  <div class="diary-container relative z-10 max-w-6xl w-full max-h-[90vh] overflow-hidden">
+    <button 
+      id="diary-close"
+      class="victorian-close-btn absolute top-0 right-0 z-30"
+      aria-label="Close Diary"
+    >
+      <span class="close-icon">×</span>
+    </button>
+    <BookDiary />
+  </div>
+</div>
+
+<script>
+  const overlay = document.getElementById('diary-overlay');
+  const backdrop = document.getElementById('diary-backdrop');
+  const closeBtn = document.getElementById('diary-close');
+  const diaryBtn = document.getElementById('diary-btn');
+
+  if (!overlay || !backdrop || !closeBtn || !diaryBtn) {
+    throw new Error('Diary overlay elements not found');
+  }
+
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function openDiary() {
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    
+    // Animate opening
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '0';
+      requestAnimationFrame(() => {
+        const duration = prefersReducedMotion ? '0.1s' : '0.3s';
+        overlay.style.transition = `opacity ${duration} ease`;
+        overlay.style.opacity = '1';
+      });
+    });
+  }
+
+  function closeDiary() {
+    const duration = prefersReducedMotion ? '0.1s' : '0.3s';
+    overlay.style.transition = `opacity ${duration} ease`;
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      overlay.classList.remove('flex');
+    }, prefersReducedMotion ? 100 : 300);
+  }
+
+  diaryBtn.addEventListener('click', openDiary);
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // Prevent event from bubbling to page turn handlers
+    e.preventDefault();
+    closeDiary();
+  });
+  
+  // Close when clicking on the backdrop (same as other overlays)
+  backdrop.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    closeDiary();
+  });
+  
+  // Close when clicking outside the diary/book area
+  // Use capture phase to handle clicks before BookDiary handlers
+  overlay.addEventListener('click', (e) => {
+    const diaryContainer = overlay.querySelector('.diary-container') as HTMLElement;
+    const bookContainer = overlay.querySelector('.book-diary-container') as HTMLElement;
+    const target = e.target as HTMLElement;
+    
+    // If clicking directly on the backdrop, always close
+    if (target === backdrop || target.id === 'diary-backdrop' || target.classList.contains('overlay-backdrop')) {
+      e.stopPropagation();
+      e.preventDefault();
+      closeDiary();
+      return;
+    }
+    
+    // If clicking on the overlay itself (not on any child), close
+    if (target === overlay) {
+      e.stopPropagation();
+      e.preventDefault();
+      closeDiary();
+      return;
+    }
+    
+    // Check if click is inside the book container (the actual book area)
+    // This is more accurate than checking diary-container since book might not fill it
+    if (bookContainer && bookContainer.contains(target)) {
+      // Click is inside the book, don't close
+      return;
+    }
+    
+    // If clicking outside the book container, close
+    // This handles clicks in the padding area and anywhere outside the book
+    if (diaryContainer) {
+      const clickedInsideContainer = diaryContainer.contains(target);
+      if (!clickedInsideContainer) {
+        // Click is outside the container, so close the overlay
+        e.stopPropagation();
+        e.preventDefault();
+        closeDiary();
+        return;
+      } else if (bookContainer && !bookContainer.contains(target)) {
+        // Click is inside diary-container but outside book-container (padding area)
+        e.stopPropagation();
+        e.preventDefault();
+        closeDiary();
+        return;
+      }
+    }
+  }, true); // Use capture phase to intercept before BookDiary handlers
+
+  document.addEventListener('keydown', (e) => {
+    if (!overlay.classList.contains('hidden') && e.key === 'Escape') {
+      closeDiary();
+    }
+  });
+</script>
+
+<style>
+  .diary-overlay {
+    transition: opacity 0.3s ease;
+  }
+
+  .diary-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .diary-overlay .victorian-close-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+    background: #3D2817;
+    border: 2px solid #D4AF37;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+  }
+
+  .victorian-close-btn::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  .victorian-close-btn:hover {
+    background: #5C3F2A;
+    border-color: #F4D03F;
+    box-shadow: 
+      0 3px 6px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .victorian-close-btn:active {
+    transform: translateY(0);
+    box-shadow: 
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .close-icon {
+    color: #F5E6D3;
+    font-size: 1.5rem;
+    font-weight: bold;
+    font-family: 'Playfair Display', serif;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  @media (max-width: 768px) {
+    .diary-container {
+      padding: 0.75rem;
+    }
+    
+    .diary-overlay .victorian-close-btn {
+      width: 2.5rem;
+      height: 2.5rem;
+      top: 0.75rem;
+      right: 0.75rem;
+    }
+    
+    .diary-overlay .close-icon {
+      font-size: 1.25rem;
+    }
+  }
+</style>

@@ -1,0 +1,202 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+import Layout from '../../layouts/Layout.astro';
+
+export async function getStaticPaths() {
+  const weeks = await getCollection('weeks');
+  return weeks.map((week) => ({
+    params: { weekNumber: week.data.weekNumber.toString() },
+    props: { week },
+  }));
+}
+
+interface Props {
+  week: CollectionEntry<'weeks'>;
+}
+
+const { week } = Astro.props;
+const { Content } = await week.render();
+---
+
+<Layout title={`Week ${week.data.weekNumber}: ${week.data.title}`}>
+  <div class="min-h-screen bg-victorian-dark text-victorian-cream">
+    <!-- Header -->
+    <header class="bg-victorian-brown border-b-4 border-victorian-gold">
+      <div class="max-w-4xl mx-auto px-8 py-12">
+        <div class="mb-4">
+          <span class="text-victorian-cream opacity-75 text-sm">
+            {week.data.weekNumber === 1 ? 'Week 0 + Week 1' : `Week ${week.data.weekNumber}`}
+          </span>
+          <span class="text-victorian-cream opacity-75 text-sm mx-2">•</span>
+          <span class="text-victorian-cream opacity-75 text-sm">{week.data.dateRange}</span>
+        </div>
+        <h1 class="text-victorian-cream font-display text-4xl md:text-5xl font-bold mb-4">
+          {week.data.title}
+        </h1>
+        
+        {week.data.oneLiner && (
+          <p class="text-victorian-cream text-lg opacity-90 mb-2">
+            {week.data.oneLiner}
+          </p>
+        )}
+        
+        {week.data.timeTaken && (
+          <p class="text-victorian-cream text-sm opacity-75 mb-6">
+            Time taken: {week.data.timeTaken}
+          </p>
+        )}
+
+        <a 
+          href={week.data.buildUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="victorian-build-btn"
+        >
+          See build
+        </a>
+      </div>
+    </header>
+
+    <!-- Hero Image -->
+    {week.data.heroImage && (
+      <div class="max-w-4xl mx-auto px-8 py-8">
+        <img 
+          src={week.data.heroImage} 
+          alt={week.data.title}
+          class="w-full h-auto rounded-lg shadow-2xl border-4 border-victorian-brown"
+        />
+      </div>
+    )}
+
+    <!-- Content -->
+    <article class="max-w-4xl mx-auto px-8 py-12">
+      <div class="prose prose-invert prose-lg max-w-none bg-parchment text-victorian-dark p-8 rounded-lg shadow-xl border-4 border-victorian-brown paper-texture">
+        <Content />
+      </div>
+    </article>
+
+    <!-- Back Link -->
+    <div class="max-w-4xl mx-auto px-8 pb-12">
+      <a 
+        href="/"
+        class="inline-flex items-center text-victorian-cream hover:text-victorian-gold transition-colors"
+      >
+        ← Back to Workshop
+      </a>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .prose {
+    line-height: 1.75;
+  }
+  
+  .prose h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    color: #3D2817;
+  }
+  
+  .prose h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: #3D2817;
+  }
+  
+  .prose p {
+    margin-bottom: 1.25rem;
+  }
+  
+  .prose ul, .prose ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .prose li {
+    margin-bottom: 0.5rem;
+  }
+  
+  .prose strong {
+    font-weight: 700;
+    color: #3D2817;
+  }
+  
+  .prose a {
+    color: #8B6F47;
+    text-decoration: underline;
+  }
+  
+  .prose a:hover {
+    color: #D4AF37;
+  }
+
+  .paper-texture {
+    background-image: 
+      url('/textures/paper-texture.svg'),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.02) 2px,
+        rgba(0, 0, 0, 0.02) 4px
+      );
+    background-size: 200px 200px, 100% 100%;
+    background-repeat: repeat;
+  }
+
+  .victorian-build-btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: #3D2817;
+    color: #F5E6D3;
+    text-decoration: none;
+    border: 2px solid #D4AF37;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    font-family: 'Playfair Display', serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    position: relative;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  
+  .victorian-build-btn::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+  
+  .victorian-build-btn:hover {
+    background: #5C3F2A;
+    border-color: #F4D03F;
+    box-shadow: 
+      0 3px 6px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+    color: #F5E6D3;
+  }
+  
+  .victorian-build-btn:active {
+    transform: translateY(0);
+    box-shadow: 
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+</style>
+

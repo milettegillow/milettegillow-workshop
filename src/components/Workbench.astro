@@ -1,0 +1,470 @@
+---
+import DiaryOverlay from './DiaryOverlay.astro';
+import BlueprintPanel from './BlueprintPanel.astro';
+import LetterPanel from './LetterPanel.astro';
+import ToolsPanel from './ToolsPanel.astro';
+---
+
+<div class="workbench-container min-h-screen relative overflow-hidden">
+  <!-- Wood Desk Background -->
+  <div class="desk-surface fixed inset-0">
+    <!-- Base wood texture -->
+    <div class="wood-base" style="background-image: url('/images/desk.png');"></div>
+    
+    <!-- Vignette -->
+    <div class="desk-vignette"></div>
+    
+    <!-- Directional lighting -->
+    <div class="desk-lighting"></div>
+    
+    <!-- Scratches and imperfections -->
+    <div class="desk-imperfections">
+      <div class="scratch scratch-1"></div>
+      <div class="scratch scratch-2"></div>
+      <div class="scratch scratch-3"></div>
+      <div class="faded-area faded-1"></div>
+      <div class="faded-area faded-2"></div>
+    </div>
+  </div>
+
+  <!-- Workbench Surface -->
+  <div class="relative z-10 min-h-screen flex items-center justify-center p-0 desktop-padding">
+    <div class="workbench-surface max-w-6xl w-full">
+      <!-- Interactive Objects -->
+      <div class="grid grid-cols-2 gap-2 items-center justify-items-center p-2 desktop-grid">
+        
+        <!-- Object B: Blueprint / Parchment -->
+        <button 
+          id="blueprint-btn"
+          class="workbench-object group cursor-pointer transform transition-all duration-300 hover:scale-110 hover:-rotate-2 desktop-mt-20 mobile-click-animate"
+          aria-label="What I'm doing"
+        >
+          <div class="relative">
+            <img 
+              src="/images/letter.png" 
+              alt="What I'm doing"
+              class="blueprint-img w-[300px] h-60 object-contain transform -rotate-6 group-hover:-rotate-3 transition-transform duration-300"
+            />
+          </div>
+        </button>
+
+        <!-- Object A: Diary / Notebook -->
+        <button 
+          id="diary-btn"
+          class="workbench-object group cursor-pointer transform transition-all duration-300 hover:scale-110 hover:rotate-2 mt-16 mobile-click-animate"
+          aria-label="Open Diary"
+        >
+          <div class="relative">
+            <img 
+              src="/images/diary.png" 
+              alt="Diary"
+              class="diary-img w-80 h-[400px] object-contain transform perspective-1000 rotate-y-6 group-hover:rotate-y-12 transition-transform duration-300"
+            />
+          </div>
+        </button>
+
+        <!-- Object D: Tool -->
+        <button 
+          id="tools-btn"
+          class="workbench-object group cursor-pointer transform transition-all duration-300 hover:scale-110 hover:-rotate-6 mt-20 desktop-tools-margin mobile-click-animate"
+          aria-label="Tools / Stack"
+        >
+          <div class="relative">
+            <img 
+              src="/images/tools.png" 
+              alt="Tools / Stack"
+              class="tools-img w-[360px] h-[480px] object-contain transform rotate-6 group-hover:rotate-12 transition-transform duration-300"
+            />
+          </div>
+        </button>
+
+        <!-- Object C: Letter / Nameplate -->
+        <button 
+          id="letter-btn"
+          class="workbench-object group cursor-pointer transform transition-all duration-300 hover:scale-110 hover:rotate-2 mt-20 desktop-photo-margin mobile-click-animate"
+          aria-label="About me"
+        >
+          <div class="relative">
+            <img 
+              src="/images/photograph.png" 
+              alt="About me"
+              class="letter-img w-80 h-[280px] object-contain transform rotate-6 group-hover:rotate-2 transition-transform duration-300"
+            />
+          </div>
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <script is:inline>
+    // Mobile/Tablet click animations - trigger hover effects on click
+    (function() {
+      const isMobileOrTablet = window.matchMedia('(max-width: 1024px)').matches;
+      
+      if (isMobileOrTablet) {
+        function setupClickAnimation(buttonId, imgSelector, overlayId) {
+          const button = document.getElementById(buttonId);
+          const img = document.querySelector(imgSelector);
+          const overlay = overlayId ? document.getElementById(overlayId) : null;
+          
+          if (button && img) {
+            button.addEventListener('click', function(e) {
+              // Apply animation classes immediately (no delay)
+              button.classList.add('mobile-clicked');
+              img.classList.add('mobile-clicked');
+              
+              // Keep animation until overlay closes
+              if (overlay) {
+                // Watch for overlay close events
+                const removeAnimation = () => {
+                  button.classList.remove('mobile-clicked');
+                  img.classList.remove('mobile-clicked');
+                };
+                
+                // Listen for overlay close (check periodically)
+                const checkOverlay = setInterval(() => {
+                  if (overlay.classList.contains('hidden')) {
+                    clearInterval(checkOverlay);
+                    removeAnimation();
+                  }
+                }, 100);
+                
+                // Also listen to close button clicks
+                const closeBtn = overlay.querySelector('[id$="-close"]');
+                if (closeBtn) {
+                  const closeHandler = () => {
+                    setTimeout(removeAnimation, 100);
+                    closeBtn.removeEventListener('click', closeHandler);
+                  };
+                  closeBtn.addEventListener('click', closeHandler, { once: true });
+                }
+                
+                // Listen to backdrop clicks
+                const backdrop = overlay.querySelector('[id$="-backdrop"]');
+                if (backdrop) {
+                  const backdropHandler = () => {
+                    setTimeout(removeAnimation, 100);
+                    backdrop.removeEventListener('click', backdropHandler);
+                  };
+                  backdrop.addEventListener('click', backdropHandler, { once: true });
+                }
+              } else {
+                // No overlay, remove classes after animation completes
+                setTimeout(() => {
+                  button.classList.remove('mobile-clicked');
+                  img.classList.remove('mobile-clicked');
+                }, 300);
+              }
+            }, { capture: true });
+          }
+        }
+
+        // Setup animations when DOM is ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => {
+            setupClickAnimation('blueprint-btn', '.blueprint-img', 'blueprint-overlay');
+            setupClickAnimation('diary-btn', '.diary-img', 'diary-overlay');
+            setupClickAnimation('tools-btn', '.tools-img', 'tools-overlay');
+            setupClickAnimation('letter-btn', '.letter-img', 'letter-overlay');
+          });
+        } else {
+          // DOM already loaded - setup immediately
+          setupClickAnimation('blueprint-btn', '.blueprint-img', 'blueprint-overlay');
+          setupClickAnimation('diary-btn', '.diary-img', 'diary-overlay');
+          setupClickAnimation('tools-btn', '.tools-img', 'tools-overlay');
+          setupClickAnimation('letter-btn', '.letter-img', 'letter-overlay');
+        }
+      }
+    })();
+  </script>
+
+  <!-- Overlays -->
+  <DiaryOverlay />
+  <BlueprintPanel />
+  <LetterPanel />
+  <ToolsPanel />
+</div>
+
+<style>
+  .workbench-container {
+    perspective: 1000px;
+    background: transparent !important;
+    position: relative;
+  }
+
+  @media (min-width: 1025px) {
+    .desktop-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 3rem;
+      padding: 0;
+    }
+    
+    .desktop-padding {
+      padding: 2rem;
+    }
+    
+    .desktop-mt-20 {
+      margin-top: 5rem;
+    }
+    
+    .desktop-photo-margin {
+      margin-top: 10rem !important;
+    }
+    
+    #diary-btn img {
+      width: 350px !important;
+      height: 450px !important;
+      max-width: 350px !important;
+      max-height: 450px !important;
+    }
+    
+    #tools-btn img {
+      width: 350px !important;
+      height: 450px !important;
+      max-width: 350px !important;
+      max-height: 450px !important;
+    }
+    
+    .desktop-tools-margin {
+      margin-top: 10rem !important;
+    }
+  }
+  
+  .workbench-object {
+    /* Removed drop-shadow to eliminate lighter square around images */
+  }
+
+  /* Mobile/Tablet click animation states */
+  @media (max-width: 1024px) {
+    .workbench-object.mobile-clicked {
+      transform: scale(1.1);
+      transition: transform 0.3s ease;
+    }
+    
+    #blueprint-btn.mobile-clicked {
+      transform: scale(1.1) rotate(-2deg);
+    }
+    
+    .blueprint-img.mobile-clicked {
+      transform: rotate(-3deg);
+    }
+    
+    #diary-btn.mobile-clicked {
+      transform: scale(1.1) rotate(2deg);
+    }
+    
+    .diary-img.mobile-clicked {
+      transform: rotateY(-2deg);
+    }
+    
+    .diary-img {
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    #tools-btn.mobile-clicked {
+      transform: scale(1.1) rotate(-6deg);
+    }
+    
+    .tools-img.mobile-clicked {
+      transform: rotate(12deg);
+    }
+    
+    #letter-btn.mobile-clicked {
+      transform: scale(1.1) rotate(2deg);
+    }
+    
+    .letter-img.mobile-clicked {
+      transform: rotate(2deg);
+    }
+  }
+  
+  .perspective-1000 {
+    transform-style: preserve-3d;
+  }
+
+  /* Desk Surface */
+  .desk-surface {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+  }
+
+  .wood-base {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #3D2817;
+    background-image: url('/images/desk.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 1;
+    z-index: 1;
+  }
+
+  .desk-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 0%,
+      rgba(0, 0, 0, 0.15) 70%,
+      rgba(0, 0, 0, 0.25) 100%
+    );
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .desk-lighting {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 30%,
+      transparent 70%,
+      rgba(0, 0, 0, 0.2) 100%
+    );
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  /* Scratches and Imperfections */
+  .desk-imperfections {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  .scratch {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 1px;
+  }
+
+  .scratch-1 {
+    width: 200px;
+    height: 1px;
+    top: 30%;
+    left: 10%;
+    transform: rotate(15deg);
+  }
+
+  .scratch-2 {
+    width: 150px;
+    height: 1px;
+    top: 60%;
+    right: 15%;
+    transform: rotate(-10deg);
+  }
+
+  .scratch-3 {
+    width: 100px;
+    height: 1px;
+    bottom: 20%;
+    left: 20%;
+    transform: rotate(5deg);
+  }
+
+  .faded-area {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+  }
+
+  .faded-1 {
+    width: 300px;
+    height: 300px;
+    top: 20%;
+    right: 10%;
+    opacity: 0.3;
+  }
+
+  .faded-2 {
+    width: 200px;
+    height: 200px;
+    bottom: 15%;
+    left: 15%;
+    opacity: 0.2;
+  }
+
+  @media (max-width: 767px) {
+    .workbench-object img {
+      max-width: 200px;
+      max-height: 250px;
+      width: auto !important;
+      height: auto !important;
+    }
+    
+    #diary-btn img {
+      max-width: 200px;
+      max-height: 250px;
+    }
+    
+    #blueprint-btn img {
+      max-width: 180px;
+      max-height: 144px;
+    }
+    
+    #letter-btn img {
+      max-width: 200px;
+      max-height: 175px;
+    }
+    
+    #tools-btn img {
+      width: 400px;
+      height: 450px;
+      max-width: 400px;
+      max-height: 450px;
+    }
+    
+    .workbench-object {
+      margin-top: 0 !important;
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 1024px) {
+    .workbench-object img {
+      max-width: 500px;
+      max-height: 625px;
+      width: auto !important;
+      height: auto !important;
+    }
+    
+    #diary-btn img {
+      max-width: 500px;
+      max-height: 625px;
+    }
+    
+    #blueprint-btn img {
+      max-width: 430px;
+      max-height: 344px;
+    }
+    
+    #letter-btn img {
+      max-width: 500px;
+      max-height: 438px;
+    }
+    
+    #tools-btn img {
+      max-width: 500px;
+      max-height: 666px;
+    }
+    
+    .workbench-object {
+      margin-top: 0 !important;
+    }
+  }
+
+</style>

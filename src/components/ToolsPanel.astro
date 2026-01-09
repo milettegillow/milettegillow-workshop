@@ -1,0 +1,405 @@
+---
+import { getEntry, getCollection } from 'astro:content';
+
+let page;
+let Content;
+let debugInfo = {
+  getEntryResult: null,
+  getEntryError: null,
+  getCollectionResult: null,
+  getCollectionError: null,
+  foundEntry: null,
+  renderError: null,
+};
+
+// Try getEntry first (recommended approach)
+try {
+  page = await getEntry('pages', 'tools');
+  debugInfo.getEntryResult = page ? {
+    id: page.id,
+    slug: page.slug,
+    data: page.data,
+  } : null;
+} catch (error) {
+  debugInfo.getEntryError = {
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  };
+  
+  // Fallback to getCollection + find if getEntry fails
+  try {
+    const pages = await getCollection('pages');
+    debugInfo.getCollectionResult = pages.map(p => ({
+      id: p.id,
+      slug: p.slug,
+    }));
+    page = pages.find(p => p.id === 'tools' || p.id === 'pages/tools' || p.slug === 'tools');
+    if (page) {
+      debugInfo.foundEntry = {
+        id: page.id,
+        slug: page.slug,
+      };
+    }
+  } catch (fallbackError) {
+    debugInfo.getCollectionError = {
+      message: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+      stack: fallbackError instanceof Error ? fallbackError.stack : undefined,
+    };
+  }
+}
+
+// Render MDX content correctly:
+// 1. Get entry: getEntry('pages', 'tools')
+// 2. Render: const rendered = await page.render()
+// 3. Extract Content: Content = rendered.Content
+// 4. Render in template: <Content /> (no innerHTML, no string injection)
+if (page) {
+  try {
+    const rendered = await page.render();
+    Content = rendered.Content;
+  } catch (error) {
+    debugInfo.renderError = {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    };
+  }
+}
+
+if (!page) {
+  page = { data: { title: "Tools / Stack" } };
+}
+---
+
+<div id="tools-overlay" class="panel-overlay fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div class="overlay-backdrop absolute inset-0 bg-black bg-opacity-75" id="tools-backdrop"></div>
+  
+  <div class="panel-container relative z-10 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div class="panel-content panel-paper shadow-2xl p-8 relative">
+      <button 
+        id="tools-close"
+        class="victorian-close-btn absolute top-0 right-0 z-30"
+        aria-label="Close Panel"
+      >
+        <span class="close-icon">×</span>
+      </button>
+      <h2 class="text-victorian-dark font-display text-3xl font-bold mb-6 text-center">
+        {page.data.title}
+      </h2>
+      
+      <div class="text-victorian-dark space-y-6 max-w-none">
+        {Content ? (
+          <article class="tools-mdx prose prose-stone max-w-none">
+            <Content />
+          </article>
+        ) : (
+          <div class="debug-error p-6 bg-red-100 border-4 border-red-500 rounded-lg">
+            <h3 class="text-red-800 font-bold text-xl mb-4">⚠️ MDX Content Failed to Load</h3>
+            
+            <div class="space-y-3 text-sm">
+              <div>
+                <strong>getEntry('pages', 'tools') result:</strong>
+                <pre class="bg-white p-2 rounded mt-1 overflow-auto">{JSON.stringify(debugInfo.getEntryResult, null, 2)}</pre>
+              </div>
+              
+              {debugInfo.getEntryError && (
+                <div>
+                  <strong>getEntry error:</strong>
+                  <pre class="bg-white p-2 rounded mt-1 overflow-auto text-red-600">{JSON.stringify(debugInfo.getEntryError, null, 2)}</pre>
+                </div>
+              )}
+              
+              {debugInfo.getCollectionResult && (
+                <div>
+                  <strong>getCollection('pages') found {debugInfo.getCollectionResult.length} entries:</strong>
+                  <pre class="bg-white p-2 rounded mt-1 overflow-auto">{JSON.stringify(debugInfo.getCollectionResult, null, 2)}</pre>
+                </div>
+              )}
+              
+              {debugInfo.foundEntry && (
+                <div>
+                  <strong>Found entry via fallback:</strong>
+                  <pre class="bg-white p-2 rounded mt-1 overflow-auto">{JSON.stringify(debugInfo.foundEntry, null, 2)}</pre>
+                </div>
+              )}
+              
+              {debugInfo.renderError && (
+                <div>
+                  <strong>Render error:</strong>
+                  <pre class="bg-white p-2 rounded mt-1 overflow-auto text-red-600">{JSON.stringify(debugInfo.renderError, null, 2)}</pre>
+                </div>
+              )}
+              
+              {!debugInfo.getEntryResult && !debugInfo.foundEntry && (
+                <div class="text-red-700 font-bold">
+                  ❌ No entry found with id/slug 'tools' in pages collection
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const overlay = document.getElementById('tools-overlay');
+  const backdrop = document.getElementById('tools-backdrop');
+  const closeBtn = document.getElementById('tools-close');
+  const toolsBtn = document.getElementById('tools-btn');
+
+  if (!overlay || !backdrop || !closeBtn || !toolsBtn) {
+    throw new Error('Tools panel elements not found');
+  }
+
+  function openPanel() {
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
+    
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '0';
+      requestAnimationFrame(() => {
+        overlay.style.transition = 'opacity 0.3s ease';
+        overlay.style.opacity = '1';
+      });
+    });
+  }
+
+  function closePanel() {
+    overlay.style.transition = 'opacity 0.3s ease';
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      overlay.classList.remove('flex');
+    }, 300);
+  }
+
+  toolsBtn.addEventListener('click', openPanel);
+  closeBtn.addEventListener('click', closePanel);
+  backdrop.addEventListener('click', closePanel);
+
+  document.addEventListener('keydown', (e) => {
+    if (!overlay.classList.contains('hidden') && e.key === 'Escape') {
+      closePanel();
+    }
+  });
+</script>
+
+<style>
+  .panel-overlay {
+    transition: opacity 0.3s ease;
+  }
+
+  .panel-paper {
+    background-image: url('/images/paper.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  /* MDX Content Container - Global styles for rendered markdown elements */
+  :global(.tools-mdx) {
+    color: #3D2817;
+  }
+
+  /* Headings - Must be visually distinct and override global resets */
+  :global(.tools-mdx h1) {
+    font-family: 'Playfair Display', serif !important;
+    font-size: 2rem !important;
+    font-weight: 700 !important;
+    margin-top: 1.25rem !important;
+    margin-bottom: 0.5rem !important;
+    color: #3D2817 !important;
+    display: block !important;
+    line-height: 1.3 !important;
+  }
+
+  :global(.tools-mdx h2) {
+    font-family: 'Playfair Display', serif !important;
+    font-size: 1.75rem !important;
+    font-weight: 900 !important;
+    margin-top: 1.5rem !important;
+    margin-bottom: 0.5rem !important;
+    color: #3D2817 !important;
+    display: block !important;
+    line-height: 1.3 !important;
+  }
+
+  :global(.tools-mdx h2:first-of-type) {
+    margin-top: 0.75rem !important;
+  }
+
+  :global(.tools-mdx h3) {
+    font-family: 'Playfair Display', serif !important;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    margin-top: 1.25rem !important;
+    margin-bottom: 0.5rem !important;
+    color: #3D2817 !important;
+    display: block !important;
+    line-height: 1.3 !important;
+  }
+
+  :global(.tools-mdx h4) {
+    font-family: 'Playfair Display', serif !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    margin-top: 1rem !important;
+    margin-bottom: 0.5rem !important;
+    color: #3D2817 !important;
+    display: block !important;
+  }
+
+  /* Paragraphs - Condensed spacing */
+  :global(.tools-mdx p) {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    color: #3D2817 !important;
+  }
+
+  :global(.tools-mdx p:first-child) {
+    margin-top: 0 !important;
+  }
+
+  :global(.tools-mdx p:last-child) {
+    margin-bottom: 0 !important;
+  }
+
+  /* Lists - Condensed spacing */
+  :global(.tools-mdx ul),
+  :global(.tools-mdx ol) {
+    list-style-type: disc !important;
+    padding-left: 1.5rem !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+    color: #3D2817 !important;
+    display: block !important;
+  }
+
+  :global(.tools-mdx ol) {
+    list-style-type: decimal !important;
+  }
+
+  :global(.tools-mdx li) {
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+    color: #3D2817 !important;
+    display: list-item !important;
+    list-style-position: outside !important;
+    padding-left: 0.5rem !important;
+  }
+
+  :global(.tools-mdx li > p) {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Ensure strong/bold text in lists is visible */
+  :global(.tools-mdx li strong) {
+    font-weight: 700 !important;
+    color: #3D2817 !important;
+  }
+
+  /* Code blocks */
+  :global(.tools-mdx code) {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    background: rgba(139, 111, 71, 0.1);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    color: #3D2817;
+  }
+
+  :global(.tools-mdx pre) {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    background: rgba(139, 111, 71, 0.1);
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+    color: #3D2817;
+  }
+
+  :global(.tools-mdx pre code) {
+    background: transparent;
+    padding: 0;
+  }
+
+  .panel-content {
+    position: relative;
+  }
+
+  .victorian-close-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+    background: #3D2817;
+    border: 2px solid #D4AF37;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+  }
+  
+  @media (max-width: 768px) {
+    .victorian-close-btn {
+      width: 2.5rem;
+      height: 2.5rem;
+      top: 0.75rem;
+      right: 0.75rem;
+    }
+    
+    .close-icon {
+      font-size: 1.25rem;
+    }
+  }
+
+  .victorian-close-btn::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+
+  .victorian-close-btn:hover {
+    background: #5C3F2A;
+    border-color: #F4D03F;
+    box-shadow: 
+      0 3px 6px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+  }
+
+  .victorian-close-btn:active {
+    transform: translateY(0);
+    box-shadow: 
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .close-icon {
+    color: #F5E6D3;
+    font-size: 1.5rem;
+    font-weight: bold;
+    font-family: 'Playfair Display', serif;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+</style>

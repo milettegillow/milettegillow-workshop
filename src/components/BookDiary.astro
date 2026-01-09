@@ -1,0 +1,823 @@
+---
+import { getCollection } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import StatusStamp from './StatusStamp.astro';
+
+const allWeeks = await getCollection('weeks');
+// Filter to only show active weeks
+// Show ONLY if active is explicitly true
+// Hide if active is false, undefined, or any other value
+const weeks = allWeeks
+  .filter(week => {
+    const active = week.data.active;
+    // Strict check: only show if explicitly true
+    // Hide if false, undefined, null, or any other value
+    return active === true;
+  })
+  .sort((a, b) => b.data.weekNumber - a.data.weekNumber); // DESC order - newest first
+
+// Group into spreads of 2
+const spreads: Array<[CollectionEntry<'weeks'> | null, CollectionEntry<'weeks'> | null]> = [];
+for (let i = 0; i < weeks.length; i += 2) {
+  spreads.push([
+    weeks[i] || null,
+    weeks[i + 1] || null
+  ]);
+}
+
+// If no spreads, create one blank spread
+if (spreads.length === 0) {
+  spreads.push([null, null]);
+}
+---
+
+<div class="book-diary-container" id="book-diary-container">
+  <div class="book-wrapper">
+    <!-- Open book image - desktop -->
+    <img 
+      src="/images/diary-blank.png" 
+      alt="Open Diary"
+      class="book-image desktop-book"
+      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+    />
+    
+    <!-- Single page image - mobile -->
+    <img 
+      src="/images/diary-page.png" 
+      alt="Diary Page"
+      class="book-image mobile-book"
+    />
+    
+    <!-- Page content regions -->
+    <div class="book-pages" id="book-pages">
+      {spreads.map((spread, spreadIndex) => (
+        <div 
+          class="book-spread" 
+          data-spread-index={spreadIndex}
+          style={spreadIndex === 0 ? '' : 'display: none;'}
+        >
+          <!-- Left Page (newest) -->
+          <div class="page-left">
+            {spread[0] ? (
+              <div class="page-content-inner">
+                <div class="entry-header">
+                  <div class="entry-meta">
+                    <span class="week-number">
+                      {spread[0].data.weekNumber === 1 ? 'Week 0 + Week 1' : `Week ${spread[0].data.weekNumber}`}
+                    </span>
+                    <span class="date-range">{spread[0].data.dateRange}</span>
+                  </div>
+                  {spread[0].data.status && (
+                    <StatusStamp status={spread[0].data.status} shippedDate={spread[0].data.shippedDate} />
+                  )}
+                </div>
+                
+                <h2 class="entry-title">{spread[0].data.title}</h2>
+                
+                {spread[0].data.timeTaken && (
+                  <p class="entry-time">Time taken: {spread[0].data.timeTaken}</p>
+                )}
+                
+                {spread[0].data.oneLiner && (
+                  <p class="entry-one-liner">{spread[0].data.oneLiner}</p>
+                )}
+                
+                {spread[0].data.experience && (
+                  <p class="entry-experience">{spread[0].data.experience}</p>
+                )}
+                
+                <div class="entry-actions">
+                  <a 
+                    href={spread[0].data.buildUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="victorian-build-btn"
+                  >
+                    See build
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div class="page-content-inner blank-page">
+              </div>
+            )}
+          </div>
+          
+          <!-- Right Page (next newest) -->
+          <div class="page-right">
+            {spread[1] ? (
+              <div class="page-content-inner">
+                <div class="entry-header">
+                  <div class="entry-meta">
+                    <span class="week-number">
+                      {spread[1].data.weekNumber === 1 ? 'Week 0 + Week 1' : `Week ${spread[1].data.weekNumber}`}
+                    </span>
+                    <span class="date-range">{spread[1].data.dateRange}</span>
+                  </div>
+                  {spread[1].data.status && (
+                    <StatusStamp status={spread[1].data.status} shippedDate={spread[1].data.shippedDate} />
+                  )}
+                </div>
+                
+                <h2 class="entry-title">{spread[1].data.title}</h2>
+                
+                {spread[1].data.timeTaken && (
+                  <p class="entry-time">Time taken: {spread[1].data.timeTaken}</p>
+                )}
+                
+                {spread[1].data.oneLiner && (
+                  <p class="entry-one-liner">{spread[1].data.oneLiner}</p>
+                )}
+                
+                {spread[1].data.experience && (
+                  <p class="entry-experience">{spread[1].data.experience}</p>
+                )}
+                
+                <div class="entry-actions">
+                  <a 
+                    href={spread[1].data.buildUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="victorian-build-btn"
+                  >
+                    See build
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div class="page-content-inner blank-page">
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+    
+    <!-- Page turn click targets - full left/right sides -->
+    <button 
+      class="page-turn-btn page-turn-left"
+      id="book-prev"
+      aria-label="Previous spread (newer)"
+      disabled
+    >
+      <span class="sr-only">Previous spread (newer)</span>
+      <span class="page-arrow page-arrow-left" id="arrow-left">‹</span>
+    </button>
+    <button 
+      class="page-turn-btn page-turn-right"
+      id="book-next"
+      aria-label="Next spread (older)"
+      disabled={spreads.length <= 1}
+    >
+      <span class="sr-only">Next spread (older)</span>
+      <span class="page-arrow page-arrow-right" id="arrow-right">›</span>
+    </button>
+    
+  </div>
+</div>
+
+<script>
+  const container = document.getElementById('book-diary-container');
+  const pagesContainer = document.getElementById('book-pages');
+  const prevBtn = document.getElementById('book-prev');
+  const nextBtn = document.getElementById('book-next');
+  if (!container || !pagesContainer || !prevBtn || !nextBtn) {
+    throw new Error('Book diary elements not found');
+  }
+  
+  const spreads = Array.from(pagesContainer.children);
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  
+  // Check if we're on mobile (single page view)
+  function isMobileView(): boolean {
+    const mobileBook = document.querySelector('.mobile-book') as HTMLElement;
+    return mobileBook ? window.getComputedStyle(mobileBook).display !== 'none' : window.innerWidth <= 768;
+  }
+  
+  // Get total pages: on mobile, count individual weeks; on desktop, count spreads
+  function getTotalPages(): number {
+    if (isMobileView()) {
+      // On mobile, count individual weeks (flatten spreads)
+      // Count all non-null entries across all spreads
+      let weekCount = 0;
+      spreads.forEach((spread) => {
+        if (spread.querySelector('.page-left .page-content-inner:not(.blank-page)')) weekCount++;
+        if (spread.querySelector('.page-right .page-content-inner:not(.blank-page)')) weekCount++;
+      });
+      return weekCount;
+    } else {
+      // On desktop, count spreads
+      return spreads.length;
+    }
+  }
+  
+  // Get current page index: on mobile, track individual week; on desktop, track spread
+  let currentPage = 0;
+  
+  // Convert page index to spread index (for desktop) or week index (for mobile)
+  function getSpreadIndex(pageIndex: number): number {
+    if (isMobileView()) {
+      // On mobile, each page is a week, so find which spread contains this week
+      // Week index 0 = spread 0 left, week index 1 = spread 0 right, week index 2 = spread 1 left, etc.
+      return Math.floor(pageIndex / 2);
+    } else {
+      // On desktop, page index = spread index
+      return pageIndex;
+    }
+  }
+  
+  // Get which side of spread to show (for mobile)
+  function getSpreadSide(pageIndex: number): 'left' | 'right' {
+    return pageIndex % 2 === 0 ? 'left' : 'right';
+  }
+  
+  function updateSpreadDisplay(animate = true) {
+    const duration = prefersReducedMotion ? '0.1s' : '0.35s';
+    const totalPages = getTotalPages();
+    const isMobile = isMobileView();
+    
+    if (isMobile) {
+      // Mobile: show individual weeks, one per page
+      const spreadIndex = getSpreadIndex(currentPage);
+      const side = getSpreadSide(currentPage);
+      
+      spreads.forEach((spread, index) => {
+        const spreadEl = spread as HTMLElement;
+        const leftPage = spreadEl.querySelector('.page-left') as HTMLElement;
+        const rightPage = spreadEl.querySelector('.page-right') as HTMLElement;
+        
+        if (index === spreadIndex) {
+          spreadEl.style.display = 'flex';
+          // Show only the appropriate page (left or right)
+          if (leftPage) leftPage.style.display = side === 'left' ? 'block' : 'none';
+          if (rightPage) rightPage.style.display = side === 'right' ? 'block' : 'none';
+          
+          if (animate && !prefersReducedMotion) {
+            spreadEl.style.transform = 'rotateY(0deg)';
+            spreadEl.style.opacity = '0';
+            requestAnimationFrame(() => {
+              spreadEl.style.transition = `opacity ${duration} ease, transform ${duration} ease`;
+              spreadEl.style.opacity = '1';
+              spreadEl.style.transform = 'rotateY(0deg)';
+            });
+          } else {
+            spreadEl.style.opacity = '1';
+            spreadEl.style.transform = 'rotateY(0deg)';
+          }
+        } else {
+          if (animate && !prefersReducedMotion && index === getSpreadIndex(currentPage - 1)) {
+            // Animate page turn for previous spread
+            spreadEl.style.transition = `opacity ${duration} ease, transform ${duration} ease`;
+            spreadEl.style.transform = 'rotateY(-180deg)';
+            spreadEl.style.opacity = '0';
+          } else if (animate && !prefersReducedMotion && index === getSpreadIndex(currentPage + 1)) {
+            // Animate page turn for next spread
+            spreadEl.style.transition = `opacity ${duration} ease, transform ${duration} ease`;
+            spreadEl.style.transform = 'rotateY(180deg)';
+            spreadEl.style.opacity = '0';
+          } else {
+            spreadEl.style.transition = `opacity ${duration} ease`;
+            spreadEl.style.opacity = '0';
+          }
+          setTimeout(() => {
+            if (index !== spreadIndex) {
+              spreadEl.style.display = 'none';
+              spreadEl.style.transform = '';
+            }
+          }, prefersReducedMotion ? 50 : 350);
+        }
+      });
+    } else {
+      // Desktop: show spreads (two pages at once)
+      spreads.forEach((spread, index) => {
+        const spreadEl = spread as HTMLElement;
+        const leftPage = spreadEl.querySelector('.page-left') as HTMLElement;
+        const rightPage = spreadEl.querySelector('.page-right') as HTMLElement;
+        
+        if (index === currentPage) {
+          spreadEl.style.display = 'flex';
+          // Show both pages on desktop
+          if (leftPage) leftPage.style.display = 'block';
+          if (rightPage) rightPage.style.display = 'block';
+          
+          if (animate && !prefersReducedMotion) {
+            spreadEl.style.transform = 'rotateY(0deg)';
+            spreadEl.style.opacity = '0';
+            requestAnimationFrame(() => {
+              spreadEl.style.transition = `opacity ${duration} ease, transform ${duration} ease`;
+              spreadEl.style.opacity = '1';
+              spreadEl.style.transform = 'rotateY(0deg)';
+            });
+          } else {
+            spreadEl.style.opacity = '1';
+            spreadEl.style.transform = 'rotateY(0deg)';
+          }
+        } else {
+          if (animate && !prefersReducedMotion && index === currentPage - 1) {
+            // Animate page turn for previous spread
+            spreadEl.style.transition = `opacity ${duration} ease, transform ${duration} ease`;
+            spreadEl.style.transform = 'rotateY(-180deg)';
+            spreadEl.style.opacity = '0';
+          } else if (animate && !prefersReducedMotion && index === currentPage + 1) {
+            // Animate page turn for next spread
+            spreadEl.style.transition = `opacity ${duration} ease, transform ${duration} ease`;
+            spreadEl.style.transform = 'rotateY(180deg)';
+            spreadEl.style.opacity = '0';
+          } else {
+            spreadEl.style.transition = `opacity ${duration} ease`;
+            spreadEl.style.opacity = '0';
+          }
+          setTimeout(() => {
+            if (index !== currentPage) {
+              spreadEl.style.display = 'none';
+              spreadEl.style.transform = '';
+            }
+          }, prefersReducedMotion ? 50 : 350);
+        }
+      });
+    }
+    
+    prevBtn.disabled = currentPage === 0;
+    nextBtn.disabled = currentPage >= totalPages - 1;
+    
+    // Update arrow opacity based on whether navigation is possible
+    const arrowLeft = document.getElementById('arrow-left');
+    const arrowRight = document.getElementById('arrow-right');
+    if (arrowLeft) {
+      arrowLeft.style.display = 'block';
+      arrowLeft.style.visibility = 'visible';
+      arrowLeft.style.opacity = currentPage > 0 ? '0.7' : '0.3';
+      arrowLeft.style.zIndex = '25';
+    }
+    if (arrowRight) {
+      arrowRight.style.display = 'block';
+      arrowRight.style.visibility = 'visible';
+      arrowRight.style.opacity = currentPage < totalPages - 1 ? '0.7' : '0.3';
+      arrowRight.style.zIndex = '25';
+    }
+  }
+  
+  function goToPage(index: number) {
+    const totalPages = getTotalPages();
+    if (index < 0 || index >= totalPages) return;
+    currentPage = index;
+    updateSpreadDisplay(true);
+  }
+  
+  function nextPage() {
+    const totalPages = getTotalPages();
+    if (currentPage < totalPages - 1) {
+      goToPage(currentPage + 1);
+    }
+  }
+  
+  function prevPage() {
+    if (currentPage > 0) {
+      goToPage(currentPage - 1);
+    }
+  }
+  
+  prevBtn.addEventListener('click', (e) => {
+    // Don't trigger if clicking on a link or button (including close buttons)
+    const target = e.target as HTMLElement;
+    if (target.closest('a, button:not(.page-turn-btn), .victorian-close-btn')) {
+      return;
+    }
+    // Don't trigger if clicking outside the book container (let overlay handle it)
+    if (!container.contains(target)) {
+      return;
+    }
+    prevPage();
+  });
+  
+  nextBtn.addEventListener('click', (e) => {
+    // Don't trigger if clicking on a link or button (including close buttons)
+    const target = e.target as HTMLElement;
+    if (target.closest('a, button:not(.page-turn-btn), .victorian-close-btn')) {
+      return;
+    }
+    // Don't trigger if clicking outside the book container (let overlay handle it)
+    if (!container.contains(target)) {
+      return;
+    }
+    nextPage();
+  });
+  
+  // Keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    if (!container.closest('.diary-overlay')?.classList.contains('hidden')) {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevPage();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        nextPage();
+      }
+    }
+  });
+  
+  // Handle window resize to update display if switching between mobile/desktop
+  let resizeTimeout: number;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = window.setTimeout(() => {
+      updateSpreadDisplay(false);
+    }, 250);
+  });
+  
+  // Initialize
+  updateSpreadDisplay();
+  
+  // Initialize arrows - always visible
+  setTimeout(() => {
+    const arrowLeft = document.getElementById('arrow-left');
+    const arrowRight = document.getElementById('arrow-right');
+    if (arrowLeft) {
+      arrowLeft.style.display = 'block';
+      arrowLeft.style.visibility = 'visible';
+      arrowLeft.style.opacity = currentSpread > 0 ? '0.7' : '0.3';
+    }
+    if (arrowRight) {
+      arrowRight.style.display = 'block';
+      arrowRight.style.visibility = 'visible';
+      arrowRight.style.opacity = currentSpread < totalSpreads - 1 ? '0.7' : '0.3';
+    }
+  }, 100);
+</script>
+
+<style>
+  .book-diary-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .book-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    aspect-ratio: 16 / 10;
+  }
+  
+  .book-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+  }
+  
+  .mobile-book {
+    display: none;
+  }
+  
+  .book-pages {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+  }
+  
+  .book-spread {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    opacity: 1;
+  }
+  
+  .page-left,
+  .page-right {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    overflow-y: auto;
+    color: #3D2817;
+    font-family: 'Georgia', serif;
+    z-index: 5;
+    pointer-events: auto;
+  }
+  
+  .page-left {
+    left: 0;
+    padding: 8% 6% 8% 12%;
+  }
+  
+  .page-right {
+    right: 0;
+    padding: 8% 12% 8% 6%;
+  }
+  
+  .page-content-inner {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+  
+  .entry-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .week-number {
+    font-size: 0.75rem;
+    opacity: 0.6;
+    font-weight: 600;
+  }
+  
+  .date-range {
+    font-size: 0.7rem;
+    opacity: 0.5;
+  }
+  
+  .entry-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    color: #3D2817;
+    line-height: 1.2;
+  }
+  
+  .entry-time {
+    font-size: 0.85rem;
+    color: #3D2817;
+    opacity: 0.7;
+    line-height: 1.4;
+    margin-top: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .entry-one-liner {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #3D2817;
+    line-height: 1.4;
+    font-style: italic;
+    margin-bottom: 0.75rem;
+  }
+  
+  .entry-experience {
+    font-size: 0.9rem;
+    color: #3D2817;
+    opacity: 0.85;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+  }
+  
+  .entry-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  .victorian-build-btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: #3D2817;
+    color: #F5E6D3;
+    text-decoration: none;
+    border: 2px solid #D4AF37;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    font-family: 'Playfair Display', serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+    position: relative;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  
+  .victorian-build-btn::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+  
+  .victorian-build-btn:hover {
+    background: #5C3F2A;
+    border-color: #F4D03F;
+    box-shadow: 
+      0 3px 6px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+    color: #F5E6D3;
+  }
+  
+  .victorian-build-btn:active {
+    transform: translateY(0);
+    box-shadow: 
+      0 1px 2px rgba(0, 0, 0, 0.3),
+      inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  
+  .blank-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.3;
+  }
+  
+  .blank-indicator {
+    font-style: italic;
+    font-size: 0.9rem;
+  }
+  
+  .page-turn-btn {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 12%; /* Outer edge clickable area */
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 3;
+    padding: 0;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  
+  .page-turn-btn.page-turn-left {
+    left: 0;
+    justify-content: flex-start;
+  }
+  
+  .page-turn-btn.page-turn-right {
+    right: 0;
+    justify-content: flex-end;
+  }
+  
+  .page-turn-btn:not(:disabled) {
+    pointer-events: auto;
+  }
+  
+  .page-turn-btn:disabled {
+    pointer-events: none;
+  }
+  
+  /* Allow clicks to pass through to content when button is disabled or when clicking on interactive elements */
+  .page-left *,
+  .page-right * {
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .page-turn-left {
+    left: 0;
+  }
+  
+  .page-turn-right {
+    right: 0;
+  }
+  
+  .page-turn-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.2;
+  }
+  
+  .page-turn-btn:not(:disabled):hover {
+    background: transparent;
+  }
+  
+  .page-turn-btn:not(:disabled):active {
+    background: transparent;
+  }
+  
+  .page-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Playfair Display', 'Georgia', serif;
+    font-size: 4rem;
+    font-weight: bold;
+    color: #3D2817;
+    opacity: 0.7 !important;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    user-select: none;
+    z-index: 25 !important;
+    text-shadow: 0 2px 8px rgba(255, 255, 255, 0.5), 0 0 10px rgba(255, 255, 255, 0.3);
+    display: block !important;
+    visibility: visible !important;
+  }
+  
+  /* Mobile: arrows outside the page edge */
+  .page-arrow-left {
+    left: 1rem;
+  }
+  
+  .page-arrow-right {
+    right: 1rem;
+  }
+  
+  /* Desktop: arrows positioned 15% from the edges of the diary book (book-wrapper) */
+  @media (min-width: 768px) {
+    /* Left button is 15% wide at left edge, so its right edge is at 15% from book edge */
+    /* Position arrow at the inner edge of the left button */
+    .page-turn-btn.page-turn-left .page-arrow-left {
+      left: auto;
+      right: 0; /* At the inner edge of the button (15% from book edge) */
+    }
+    
+    /* Right button is 15% wide at right edge, so its left edge is at 15% from book edge */
+    /* Position arrow at the inner edge of the right button */
+    .page-turn-btn.page-turn-right .page-arrow-right {
+      right: auto;
+      left: 0; /* At the inner edge of the button (15% from book edge) */
+    }
+  }
+  
+  .page-turn-btn:not(:disabled):hover .page-arrow {
+    opacity: 1 !important;
+    transform: translateY(-50%) scale(1.25);
+  }
+  
+  .page-turn-btn:disabled .page-arrow {
+    opacity: 0.3 !important;
+  }
+  
+  /* Arrows are always visible */
+  .page-turn-btn .page-arrow {
+    display: block !important;
+  }
+  
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  
+  /* Mobile: single page view */
+  @media (max-width: 768px) {
+    .desktop-book {
+      display: none;
+    }
+    
+    .mobile-book {
+      display: block;
+    }
+    
+    .book-wrapper {
+      aspect-ratio: 3 / 4;
+      max-width: 90%;
+    }
+    
+    .page-left,
+    .page-right {
+      width: 100%;
+      padding: 10% 8%;
+    }
+    
+    .page-right {
+      display: none;
+    }
+    
+    .book-spread {
+      flex-direction: column;
+    }
+    
+    .page-turn-left {
+      left: 5%;
+    }
+    
+    .page-turn-right {
+      right: 5%;
+    }
+  }
+</style>
+
