@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/week-3/:path*",
+      "destination": "https://week-3-capture-greenland.vercel.app/"
+    }
+  ]
+}
