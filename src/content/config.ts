@@ -6,10 +6,9 @@ const weeksCollection = defineCollection({
     weekNumber: z.number(),
     dateRange: z.string(),
     title: z.string(),
-    heroImage: z.string(),
     buildUrl: z.string().url(),
     status: z.enum(['SHIPPED', 'FAILED', 'WIP', 'LOGGED']).optional(),
-    shippedDate: z.string().optional(), // Single date when project was finished (e.g., "Jan 11, 2026")
+    shippedDate: z.string().optional(),
     oneLiner: z.string().optional(),
     timeTaken: z.string().optional(),
     experience: z.string().optional(),
