@@ -7,7 +7,7 @@ const weeksCollection = defineCollection({
     dateRange: z.string(),
     title: z.string(),
     buildUrl: z.string().url(),
-    status: z.enum(['SHIPPED', 'FAILED', 'WIP', 'LOGGED']).optional(),
+    status: z.enum(['SHIPPED', 'FAILED', 'WIP', 'LOGGED', 'PATCHED']).optional(),
     shippedDate: z.string().optional(),
     oneLiner: z.string().optional(),
     timeTaken: z.string().optional(),

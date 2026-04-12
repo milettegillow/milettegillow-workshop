@@ -1,6 +1,6 @@
 ---
 interface Props {
-  status: 'SHIPPED' | 'FAILED' | 'WIP' | 'LOGGED';
+  status: 'SHIPPED' | 'FAILED' | 'WIP' | 'LOGGED' | 'PATCHED';
   shippedDate?: string;
 }
 
@@ -11,6 +11,7 @@ const statusColors = {
   FAILED: { bg: '#6b1a1a', text: '#ff9a9a', shadow: '#3d0f0f' },
   WIP: { bg: '#1a3a5c', text: '#9ac5e8', shadow: '#0f2235' },
   LOGGED: { bg: '#2a2a2a', text: '#d4d4d4', shadow: '#1a1a1a' },
+  PATCHED: { bg: '#3d1a5c', text: '#c59ae8', shadow: '#220f35' },
 };
 
 const colors = statusColors[status];
